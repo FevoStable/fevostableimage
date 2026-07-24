@@ -1,0 +1,47 @@
+name: Extract NFT Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract-and-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Process Zip Files and Move Images
+        run: |
+          mkdir -p images
+          
+          for zip_file in part*.zip; do
+            if [ -f "$zip_file" ]; then
+              echo "Extracting $zip_file..."
+              
+              unzip -q "$zip_file" -d temp_folder
+              
+              find temp_folder -type f \( -iname \*.png -o -iname \*.jpg -o -iname \*.jpeg -o -iname \*.gif \) -exec mv {} images/ \;
+              
+              rm -rf temp_folder
+              rm "$zip_file"
+            fi
+          done
+
+      - name: Commit and Push Processed Images
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add images/
+          git add part*.zip || true
+          
+          git commit -m "Extract images from zip files and cleanup" || echo "No changes to commit"
+          git push
